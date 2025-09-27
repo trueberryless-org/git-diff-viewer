@@ -1,0 +1,67 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { html as diff2html } from "diff2html";
+
+// --- Inputs from query parameters ---
+const repo = Astro.url.searchParams.get("repo") || "";
+const file = Astro.url.searchParams.get("file") || "";
+const since = Astro.url.searchParams.get("since") || "";
+
+// --- Diff2Html options from query parameters ---
+const sideBySide = Astro.url.searchParams.get("sideBySide") === "true";
+const outputFormat = sideBySide ? "side-by-side" : "line-by-line";
+
+let diffHtml = "";
+
+if (repo && file && since) {
+  try {
+    const origin = new URL(Astro.request.url).origin;
+    const res = await fetch(
+      `${origin}/api/diff?repo=${repo}&file=${file}&since=${since}`
+    );
+    const data = await res.json();
+    const diffText = data.diff || data.error || "";
+
+    if (diffText) {
+      diffHtml = diff2html(diffText, {
+        outputFormat,
+        drawFileList: false,
+        matching: "lines",
+        // @ts-ignore
+        colorScheme: "dark",
+      });
+    }
+  } catch (e) {
+    // @ts-ignore
+    diffHtml = `<p>Error: ${e.message}</p>`;
+  }
+}
+---
+
+<Layout>
+  <h1>Diff for {repo}/{file} since {since}</h1>
+
+  <!-- Checkbox to toggle side-by-side view -->
+  <form method="get" id="diffOptionsForm" style="margin-bottom:1rem;">
+    <input type="hidden" name="repo" value={repo} />
+    <input type="hidden" name="file" value={file} />
+    <input type="hidden" name="since" value={since} />
+
+    <label>
+      <input 
+        type="checkbox" 
+        name="sideBySide" 
+        value="true" 
+        checked={sideBySide} 
+        onchange="this.form.submit()" 
+      />
+      Side by Side
+    </label>
+  </form>
+
+  {diffHtml ? (
+    <div class="diff2html-wrapper" set:html={diffHtml}></div>
+  ) : (
+    <p>No data.</p>
+  )}
+</Layout>

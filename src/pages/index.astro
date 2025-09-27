@@ -1,16 +1,99 @@
 ---
-
+import Layout from "../layouts/Layout.astro";
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout>
+  <div class="container">
+    <h1>Git Diff Viewer</h1>
+
+    <form method="get" action="/diff" class="diff-form">
+      <div class="form-group">
+        <label>GitHub Repo (user/repo)</label>
+        <input type="text" name="repo" required placeholder="e.g. withastro/docs" />
+      </div>
+
+      <div class="form-group">
+        <label>File Path (relative in repo)</label>
+        <input type="text" name="file" required placeholder="e.g. src/content/docs/en/getting-started.mdx" />
+      </div>
+
+      <div class="form-group">
+        <label>Since Date (YYYY-MM-DD)</label>
+        <input type="date" name="since" required />
+      </div>
+
+      <button type="submit">Show Diff</button>
+    </form>
+  </div>
+
+  <style>
+    .container {
+      max-width: 600px;
+      margin: 3rem auto;
+      padding: 2rem;
+      background: #111;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+      color: #f5f5f5;
+    }
+
+    .diff-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-bottom: 0.3rem;
+      font-weight: 500;
+      color: #ddd;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #f5f5f5;
+      font-size: 1rem;
+    }
+
+    input::placeholder {
+      color: #888;
+    }
+
+    button {
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: none;
+      background: #2d9cdb;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1b7fb8;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 1.5rem;
+        margin: 2rem 1rem;
+      }
+    }
+  </style>
+</Layout>
