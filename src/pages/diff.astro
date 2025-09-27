@@ -65,3 +65,25 @@ if (repo && file && since) {
     <p>No data.</p>
   )}
 </Layout>
+
+<style is:global>
+  :is(.d2h-code-linenumber,.d2h-code-side-linenumber) {
+    cursor: default;
+    height: 20px;
+  }
+  .d2h-code-linenumber>div {
+    padding: 1px 0.5em;
+  }
+  .d2h-code-side-linenumber {
+    padding: 2px 0.5em;
+  }
+  :is(.d2h-code-linenumber,.d2h-code-side-linenumber).d2h-info {
+    background-color: hsl(from var(--d2h-dark-info-bg-color) h calc(s - 50) calc(l - 44) / 1) !important;
+  }
+  :is(.d2h-code-linenumber,.d2h-code-side-linenumber).d2h-ins {
+    background-color: hsl(from var(--d2h-dark-ins-bg-color) h calc(s - 25) calc(l - 22) / 1) !important;
+  }
+  :is(.d2h-code-linenumber,.d2h-code-side-linenumber).d2h-del {
+    background-color: hsl(from var(--d2h-dark-del-bg-color) h calc(s - 50) calc(l - 44) / 1) !important;
+  }
+</style>
