@@ -1,6 +1,4 @@
 import type { APIRoute } from "astro";
-import fs from "fs/promises";
-import path from "path";
 
 export const prerender = false;
 
@@ -8,64 +6,6 @@ const token = import.meta.env.GITHUB_TOKEN;
 const headers: Record<string, string> = token
   ? { Authorization: `token ${token}` }
   : {};
-
-// Cache configuration
-const CACHE_DIR = path.join(process.cwd(), ".cache", "api-diffs");
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
-
-// Function to ensure cache directory exists
-async function ensureCacheDir() {
-  try {
-    await fs.mkdir(CACHE_DIR, { recursive: true });
-  } catch (error) {
-    console.error("Failed to create cache directory:", error);
-  }
-}
-
-// Function to get cache file path
-function getCacheFilePath(repo: string, file: string, since: string): string {
-  const safeRepo = repo.replace(/[\/\\:*?"<>|]/g, "_");
-  const safeFile = file.replace(/[\/\\:*?"<>|]/g, "_");
-  const safeSince = since.replace(/[\/\\:*?"<>|]/g, "_");
-  return path.join(CACHE_DIR, `${safeRepo}_${safeFile}_${safeSince}.json`);
-}
-
-// Function to check if cache is valid
-async function isCacheValid(filePath: string): Promise<boolean> {
-  try {
-    const stats = await fs.stat(filePath);
-    return Date.now() - stats.mtime.getTime() < CACHE_TTL;
-  } catch {
-    return false;
-  }
-}
-
-// Function to read from cache
-async function readFromCache(filePath: string): Promise<string | null> {
-  try {
-    if (await isCacheValid(filePath)) {
-      const cachedData = await fs.readFile(filePath, "utf-8");
-      const parsed = JSON.parse(cachedData);
-      return parsed.diff || null;
-    }
-  } catch (error) {
-    console.log("Cache read error:", error);
-  }
-  return null;
-}
-
-// Function to write to cache
-async function writeToCache(filePath: string, diff: string): Promise<void> {
-  try {
-    await ensureCacheDir();
-    await fs.writeFile(filePath, JSON.stringify({ 
-      diff, 
-      timestamp: Date.now() 
-    }));
-  } catch (error) {
-    console.error("Cache write error:", error);
-  }
-}
 
 export const GET: APIRoute = async ({ url }) => {
   const repo = url.searchParams.get("repo") || "";
@@ -75,22 +15,11 @@ export const GET: APIRoute = async ({ url }) => {
   if (!repo || !file || !since) {
     return new Response(JSON.stringify({ error: "Missing parameters" }), {
       status: 400,
-    });
-  }
-
-  // Try to get from cache first
-  const cacheFilePath = getCacheFilePath(repo, file, since);
-  const cachedDiff = await readFromCache(cacheFilePath);
-  
-  if (cachedDiff) {
-    console.log("Cache hit for:", `${repo}/${file} since ${since}`);
-    return new Response(JSON.stringify({ diff: cachedDiff }), {
-      status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  console.log("Cache miss, fetching from GitHub API...");
+  console.log("Fetching diff for:", `${repo}/${file} since ${since}`);
 
   try {
     // 1. Get all commits affecting this file since date
@@ -101,10 +30,20 @@ export const GET: APIRoute = async ({ url }) => {
     const commits = await commitsRes.json();
     if (!Array.isArray(commits) || commits.length === 0) {
       const noDiffMessage = "No changes since given date.";
-      await writeToCache(cacheFilePath, noDiffMessage);
       return new Response(
         JSON.stringify({ diff: noDiffMessage }),
-        { status: 200 }
+        { 
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            // Cache for 1 week (604800 seconds)
+            "Cache-Control": "public, max-age=604800, s-maxage=604800",
+            // Add ETag for better cache validation
+            "ETag": `"${Buffer.from(`${repo}|${file}|${since}|no-changes`).toString('base64')}"`,
+            // Vary header to ensure proper caching per query params
+            "Vary": "Accept-Encoding"
+          }
+        }
       );
     }
 
@@ -132,17 +71,39 @@ export const GET: APIRoute = async ({ url }) => {
       diffText = "No diff available for this file.";
     }
 
-    // Cache the result
-    await writeToCache(cacheFilePath, diffText);
+    // Create a unique ETag based on the request parameters and first/last commit SHAs
+    const firstCommitSha = commits[0]?.sha || '';
+    const lastCommitSha = commits[commits.length - 1]?.sha || '';
+    const etag = `"${Buffer.from(`${repo}|${file}|${since}|${firstCommitSha}|${lastCommitSha}`).toString('base64')}"`;
 
     return new Response(JSON.stringify({ diff: diffText }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        // Cache for 1 week (604800 seconds)
+        // public: Can be cached by CDNs and browsers
+        // max-age: How long browsers should cache
+        // s-maxage: How long CDNs/proxies should cache (takes precedence over max-age for shared caches)
+        "Cache-Control": "public, max-age=604800, s-maxage=604800",
+        // ETag for cache validation - if content hasn't changed, return 304
+        "ETag": etag,
+        // Vary header to ensure proper caching per query params
+        "Vary": "Accept-Encoding",
+        // Additional headers for better caching
+        "Last-Modified": new Date(commits[0]?.commit?.committer?.date || Date.now()).toUTCString()
+      },
     });
   } catch (err: any) {
     return new Response(
       JSON.stringify({ error: "Error fetching diff", details: err.message }),
-      { status: 500 }
+      { 
+        status: 500,
+        headers: { 
+          "Content-Type": "application/json",
+          // Don't cache errors
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+      }
     );
   }
 };
