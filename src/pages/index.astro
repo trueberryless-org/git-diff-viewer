@@ -9,12 +9,22 @@ import Layout from "../layouts/Layout.astro";
     <form method="get" action="/diff" class="diff-form">
       <div class="form-group">
         <label>GitHub Repo (user/repo)</label>
-        <input type="text" name="repo" required placeholder="e.g. withastro/docs" />
+        <input
+          type="text"
+          name="repo"
+          required
+          placeholder="e.g. withastro/docs"
+        />
       </div>
 
       <div class="form-group">
         <label>File Path (relative in repo)</label>
-        <input type="text" name="file" required placeholder="e.g. src/content/docs/en/getting-started.mdx" />
+        <input
+          type="text"
+          name="file"
+          required
+          placeholder="e.g. src/content/docs/en/getting-started.mdx"
+        />
       </div>
 
       <div class="form-group">
@@ -28,19 +38,19 @@ import Layout from "../layouts/Layout.astro";
 
   <style>
     .container {
-      max-width: 600px;
       margin: 3rem auto;
-      padding: 2rem;
-      background: #111;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       border-radius: 1rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      background: #111;
+      padding: 2rem;
+      max-width: 600px;
     }
 
     h1 {
-      text-align: center;
       margin-bottom: 2rem;
-      font-size: 2rem;
       color: #f5f5f5;
+      font-size: 2rem;
+      text-align: center;
     }
 
     .diff-form {
@@ -56,16 +66,16 @@ import Layout from "../layouts/Layout.astro";
 
     label {
       margin-bottom: 0.3rem;
-      font-weight: 500;
       color: #ddd;
+      font-weight: 500;
     }
 
     input[type="text"],
     input[type="date"] {
-      padding: 0.5rem 0.75rem;
-      border-radius: 0.5rem;
       border: 1px solid #333;
+      border-radius: 0.5rem;
       background: #1a1a1a;
+      padding: 0.5rem 0.75rem;
       color: #f5f5f5;
       font-size: 1rem;
     }
@@ -75,14 +85,14 @@ import Layout from "../layouts/Layout.astro";
     }
 
     button {
-      padding: 0.75rem;
-      border-radius: 0.5rem;
+      transition: background 0.2s;
+      cursor: pointer;
       border: none;
+      border-radius: 0.5rem;
       background: #2d9cdb;
+      padding: 0.75rem;
       color: #fff;
       font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
     }
 
     button:hover {
@@ -91,8 +101,8 @@ import Layout from "../layouts/Layout.astro";
 
     @media (max-width: 480px) {
       .container {
-        padding: 1.5rem;
         margin: 2rem 1rem;
+        padding: 1.5rem;
       }
     }
   </style>

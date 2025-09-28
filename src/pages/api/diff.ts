@@ -36,8 +36,8 @@ export const GET: APIRoute = async ({ url }) => {
           headers: {
             "Content-Type": "application/json",
             "Cache-Control": "public, max-age=604800, s-maxage=604800",
-            "ETag": `"${Buffer.from(`${repo}|${file}|${since}|no-changes`).toString("base64")}"`,
-            "Vary": "Accept-Encoding",
+            ETag: `"${Buffer.from(`${repo}|${file}|${since}|no-changes`).toString("base64")}"`,
+            Vary: "Accept-Encoding",
           },
         }
       );
@@ -94,13 +94,16 @@ export const GET: APIRoute = async ({ url }) => {
 
     if (commitDetails.length === 0) {
       return new Response(
-        JSON.stringify({ commits: [], message: "No diff available for this file." }),
+        JSON.stringify({
+          commits: [],
+          message: "No diff available for this file.",
+        }),
         {
           status: 200,
           headers: {
             "Content-Type": "application/json",
             "Cache-Control": "public, max-age=604800, s-maxage=604800",
-            "Vary": "Accept-Encoding",
+            Vary: "Accept-Encoding",
           },
         }
       );
@@ -115,9 +118,11 @@ export const GET: APIRoute = async ({ url }) => {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "public, max-age=604800, s-maxage=604800",
-        "ETag": etag,
-        "Vary": "Accept-Encoding",
-        "Last-Modified": new Date(commits[0]?.commit?.committer?.date || Date.now()).toUTCString(),
+        ETag: etag,
+        Vary: "Accept-Encoding",
+        "Last-Modified": new Date(
+          commits[0]?.commit?.committer?.date || Date.now()
+        ).toUTCString(),
       },
     });
   } catch (err: any) {

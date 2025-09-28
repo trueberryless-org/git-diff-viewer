@@ -12,5 +12,11 @@
     "@astrojs/netlify": "^6.5.11",
     "astro": "^5.14.1",
     "diff2html": "^3.4.52"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "5.2.2",
+    "prettier": "3.5.3",
+    "prettier-plugin-astro": "0.14.1",
+    "prettier-plugin-css-order": "^2.1.2"
   }
 }
