@@ -22,87 +22,113 @@ export const GET: APIRoute = async ({ url }) => {
   console.log("Fetching diff for:", `${repo}/${file} since ${since}`);
 
   try {
-    // 1. Get all commits affecting this file since date
     const commitsApiCall = `https://api.github.com/repos/${repo}/commits?path=${file}&since=${since}T00:00:00Z&per_page=100`;
     const commitsRes = await fetch(commitsApiCall, { headers });
     console.log(commitsApiCall);
-    
+
     const commits = await commitsRes.json();
     if (!Array.isArray(commits) || commits.length === 0) {
       const noDiffMessage = "No changes since given date.";
       return new Response(
-        JSON.stringify({ diff: noDiffMessage }),
-        { 
+        JSON.stringify({ commits: [], message: noDiffMessage }),
+        {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
-            // Cache for 1 week (604800 seconds)
             "Cache-Control": "public, max-age=604800, s-maxage=604800",
-            // Add ETag for better cache validation
-            "ETag": `"${Buffer.from(`${repo}|${file}|${since}|no-changes`).toString('base64')}"`,
-            // Vary header to ensure proper caching per query params
-            "Vary": "Accept-Encoding"
-          }
+            "ETag": `"${Buffer.from(`${repo}|${file}|${since}|no-changes`).toString("base64")}"`,
+            "Vary": "Accept-Encoding",
+          },
         }
       );
     }
 
-    let diffText = "";
+    const commitDetails: {
+      sha: string;
+      message: string;
+      date: string;
+      url: string;
+      author: string;
+      authorUrl?: string;
+      diff: string;
+    }[] = [];
 
-    // 2. Fetch each commit detail and extract file-level patch
     for (const commit of commits.reverse()) {
       const commitApiCall = `https://api.github.com/repos/${repo}/commits/${commit.sha}`;
       const commitRes = await fetch(commitApiCall, { headers });
       console.log(commitApiCall);
-      
+
       const commitJson = await commitRes.json();
       const fileEntry = commitJson.files?.find((f: any) => f.filename === file);
-      
+
       if (!fileEntry?.patch) continue;
-      
-      diffText += `\ndiff --git a/${file} b/${file}\n`;
-      diffText += `index ${commitJson.files[0].sha}..${commitJson.files[0].sha} 100644\n`;
+
+      let diffText = "";
+      diffText += `diff --git a/${file} b/${file}\n`;
+      diffText += `index ${fileEntry.sha || "0000000"}..${fileEntry.sha || "0000000"} 100644\n`;
       diffText += `--- a/${file}\n`;
       diffText += `+++ b/${file}\n`;
       diffText += fileEntry.patch + "\n";
+
+      let authorName = "Unknown";
+      let authorUrl: string | undefined = undefined;
+
+      if (commitJson.commit?.author?.name) {
+        authorName = commitJson.commit.author.name;
+      }
+
+      if (commitJson.author?.html_url) {
+        authorUrl = commitJson.author.html_url;
+      }
+
+      commitDetails.push({
+        sha: commit.sha,
+        message: commitJson.commit?.message || "",
+        date: commitJson.commit?.committer?.date || "",
+        url: `https://github.com/${repo}/commit/${commit.sha}`,
+        author: authorName,
+        authorUrl,
+        diff: diffText,
+      });
     }
 
-    if (!diffText) {
-      diffText = "No diff available for this file.";
+    if (commitDetails.length === 0) {
+      return new Response(
+        JSON.stringify({ commits: [], message: "No diff available for this file." }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=604800, s-maxage=604800",
+            "Vary": "Accept-Encoding",
+          },
+        }
+      );
     }
 
-    // Create a unique ETag based on the request parameters and first/last commit SHAs
-    const firstCommitSha = commits[0]?.sha || '';
-    const lastCommitSha = commits[commits.length - 1]?.sha || '';
-    const etag = `"${Buffer.from(`${repo}|${file}|${since}|${firstCommitSha}|${lastCommitSha}`).toString('base64')}"`;
+    const firstCommitSha = commits[0]?.sha || "";
+    const lastCommitSha = commits[commits.length - 1]?.sha || "";
+    const etag = `"${Buffer.from(`${repo}|${file}|${since}|${firstCommitSha}|${lastCommitSha}`).toString("base64")}"`;
 
-    return new Response(JSON.stringify({ diff: diffText }), {
+    return new Response(JSON.stringify({ commits: commitDetails }), {
       status: 200,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        // Cache for 1 week (604800 seconds)
-        // public: Can be cached by CDNs and browsers
-        // max-age: How long browsers should cache
-        // s-maxage: How long CDNs/proxies should cache (takes precedence over max-age for shared caches)
         "Cache-Control": "public, max-age=604800, s-maxage=604800",
-        // ETag for cache validation - if content hasn't changed, return 304
         "ETag": etag,
-        // Vary header to ensure proper caching per query params
         "Vary": "Accept-Encoding",
-        // Additional headers for better caching
-        "Last-Modified": new Date(commits[0]?.commit?.committer?.date || Date.now()).toUTCString()
+        "Last-Modified": new Date(commits[0]?.commit?.committer?.date || Date.now()).toUTCString(),
       },
     });
   } catch (err: any) {
     return new Response(
       JSON.stringify({ error: "Error fetching diff", details: err.message }),
-      { 
+      {
         status: 500,
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          // Don't cache errors
-          "Cache-Control": "no-cache, no-store, must-revalidate"
-        }
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       }
     );
   }
