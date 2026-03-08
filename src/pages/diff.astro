@@ -1,12 +1,14 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { html as diff2html } from "diff2html";
+import { combineUnifiedDiffs } from "../lib/combine";
 
 const repo = Astro.url.searchParams.get("repo") || "";
 const file = Astro.url.searchParams.get("file") || "";
 const since = Astro.url.searchParams.get("since") || "";
 
 const sideBySide = Astro.url.searchParams.get("sideBySide") === "true";
+const squashDiffs = Astro.url.searchParams.get("squashDiffs") === "true";
 const outputFormat = sideBySide ? "side-by-side" : "line-by-line";
 
 let commitsHtml = "";
@@ -20,56 +22,110 @@ if (repo && file && since) {
     const data = await res.json();
 
     if (Array.isArray(data.commits) && data.commits.length > 0) {
-      commitsHtml = data.commits
-        .map((c: any) => {
-          const firstLine =
-            typeof c.message === "string"
-              ? c.message.split("\n")[0]
-              : c.message || "";
+      if (squashDiffs) {
+        // Squash all diffs into one
+        const allDiffs = data.commits.map((c: any) => c.diff);
+        const combinedDiff = combineUnifiedDiffs(allDiffs);
 
-          const truncatedMessage =
-            firstLine.length > 100
-              ? firstLine.slice(0, 100).trim() + "…"
-              : firstLine;
+        // Create commit details list
+        const commitsList = data.commits
+          .map((c: any) => {
+            const firstLine =
+              typeof c.message === "string"
+                ? c.message.split("\n")[0]
+                : c.message || "";
 
-          const authorHtml = c.authorUrl
-            ? `<a href="${c.authorUrl}" target="_blank" rel="noopener noreferrer" class="commit-author">${c.author}</a>`
-            : `<span class="commit-author">${c.author || "Unknown"}</span>`;
+            const truncatedMessage =
+              firstLine.length > 80
+                ? firstLine.slice(0, 80).trim() + "…"
+                : firstLine;
 
-          const diffBlock = diff2html(c.diff, {
-            outputFormat,
-            drawFileList: false,
-            matching: "lines",
-            colorScheme: "dark",
-            rawTemplates: {
-              "generic-file-path": `
-                <span class="d2h-file-name-wrapper">
-                  {{>fileIcon}}
-                  <span class="d2h-file-name">{{fileDiffName}}</span>
-                  {{>fileTag}}
-                </span>
+            const authorHtml = c.authorUrl
+              ? `<a href="${c.authorUrl}" target="_blank" rel="noopener noreferrer" class="commit-author">${c.author}</a>`
+              : `<span class="commit-author">${c.author || "Unknown"}</span>`;
 
-                <span class="d2h-commit-info">
-                  <a href="${c.url}" target="_blank" rel="noopener noreferrer" class="commit-message" title="${(c.message || "").replace(/"/g, "&quot;")}">
-                    ${truncatedMessage}
-                  </a>
-                  <span class="commit-meta">
-                    • by ${authorHtml}
-                    • <time datetime="${c.date}">${new Date(c.date).toLocaleDateString()}</time>
+            return `
+            <div class="commit-item">
+              <a href="${c.url}" target="_blank" rel="noopener noreferrer" class="commit-message" title="${(c.message || "").replace(/"/g, "&quot;")}">
+                ${truncatedMessage}
+              </a>
+              <span class="commit-meta">
+                by ${authorHtml} • <time datetime="${c.date}">${new Date(c.date).toLocaleDateString()}</time>
+              </span>
+            </div>
+          `;
+          })
+          .join("\n");
+
+        // Render the combined diff
+        const diffBlock = diff2html(combinedDiff, {
+          outputFormat,
+          drawFileList: false,
+          matching: "lines",
+          colorScheme: "dark",
+        });
+
+        commitsHtml = `
+          <div class="squashed-diff-container">
+            <div class="commits-list">
+              <h3>Combined changes from ${data.commits.length} commit${data.commits.length > 1 ? "s" : ""}:</h3>
+              ${commitsList}
+            </div>
+            <div class="diff2html-commit">${diffBlock}</div>
+          </div>
+        `;
+      } else {
+        commitsHtml = data.commits
+          .map((c: any) => {
+            const firstLine =
+              typeof c.message === "string"
+                ? c.message.split("\n")[0]
+                : c.message || "";
+
+            const truncatedMessage =
+              firstLine.length > 100
+                ? firstLine.slice(0, 100).trim() + "…"
+                : firstLine;
+
+            const authorHtml = c.authorUrl
+              ? `<a href="${c.authorUrl}" target="_blank" rel="noopener noreferrer" class="commit-author">${c.author}</a>`
+              : `<span class="commit-author">${c.author || "Unknown"}</span>`;
+
+            const diffBlock = diff2html(c.diff, {
+              outputFormat,
+              drawFileList: false,
+              matching: "lines",
+              colorScheme: "dark",
+              rawTemplates: {
+                "generic-file-path": `
+                  <span class="d2h-file-name-wrapper">
+                    {{>fileIcon}}
+                    <span class="d2h-file-name">{{fileDiffName}}</span>
+                    {{>fileTag}}
                   </span>
-                </span>
 
-                <label class="d2h-file-collapse">
-                  <input class="d2h-file-collapse-input" type="checkbox" name="viewed" value="viewed">
-                  Viewed
-                </label>
-              `,
-            },
-          });
+                  <span class="d2h-commit-info">
+                    <a href="${c.url}" target="_blank" rel="noopener noreferrer" class="commit-message" title="${(c.message || "").replace(/"/g, "&quot;")}">
+                      ${truncatedMessage}
+                    </a>
+                    <span class="commit-meta">
+                      • by ${authorHtml}
+                      • <time datetime="${c.date}">${new Date(c.date).toLocaleDateString()}</time>
+                    </span>
+                  </span>
 
-          return `<div class="diff2html-commit">${diffBlock}</div>`;
-        })
-        .join("\n");
+                  <label class="d2h-file-collapse">
+                    <input class="d2h-file-collapse-input" type="checkbox" name="viewed" value="viewed">
+                    Viewed
+                  </label>
+                `,
+              },
+            });
+
+            return `<div class="diff2html-commit">${diffBlock}</div>`;
+          })
+          .join("\n");
+      }
     } else {
       commitsHtml = `<p>${data.message || "No changes since given date."}</p>`;
     }
@@ -96,6 +152,17 @@ if (repo && file && since) {
         onchange="this.form.submit()"
       />
       Side by Side
+    </label>
+
+    <label style="margin-left: 1rem;">
+      <input
+        type="checkbox"
+        name="squashDiffs"
+        value="true"
+        checked={squashDiffs}
+        onchange="this.form.submit()"
+      />
+      Combine All Diffs
     </label>
   </form>
 
@@ -170,6 +237,69 @@ if (repo && file && since) {
     .d2h-commit-info .commit-message {
       max-width: 20ch;
     }
+  }
+
+  /* Squashed diff styles */
+  .squashed-diff-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .commits-list {
+    border: 1px solid #3e3e3e;
+    border-radius: 6px;
+    background: #1e1e1e;
+    padding: 1rem;
+  }
+
+  .commits-list h3 {
+    margin: 0 0 0.75rem 0;
+    color: #e1e4e8;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .commit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-bottom: 1px solid #3e3e3e;
+    padding: 0.5rem 0;
+  }
+
+  .commit-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .commit-item:first-child {
+    padding-top: 0;
+  }
+
+  .commit-item .commit-message {
+    display: block;
+    color: #58a6ff;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .commit-item .commit-message:hover {
+    text-decoration: underline;
+  }
+
+  .commit-item .commit-meta {
+    color: #9aa4ab;
+    font-size: 0.875rem;
+  }
+
+  .commit-item .commit-author {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+
+  .commit-item .commit-author:hover {
+    text-decoration: underline;
   }
 
   :is(.d2h-code-linenumber, .d2h-code-side-linenumber) {

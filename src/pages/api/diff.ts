@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 
+import { normalizeHunkHeadersAndCounts } from "../../lib/combine";
+
 export const prerender = false;
 
 const token = import.meta.env.GITHUB_TOKEN;
@@ -24,7 +26,6 @@ export const GET: APIRoute = async ({ url }) => {
   try {
     const commitsApiCall = `https://api.github.com/repos/${repo}/commits?path=${file}&since=${since}T00:00:00Z&per_page=100`;
     const commitsRes = await fetch(commitsApiCall, { headers });
-    console.log(commitsApiCall);
 
     const commits = await commitsRes.json();
     if (!Array.isArray(commits) || commits.length === 0) {
@@ -68,7 +69,7 @@ export const GET: APIRoute = async ({ url }) => {
       diffText += `index ${fileEntry.sha || "0000000"}..${fileEntry.sha || "0000000"} 100644\n`;
       diffText += `--- a/${file}\n`;
       diffText += `+++ b/${file}\n`;
-      diffText += fileEntry.patch + "\n";
+      diffText += fileEntry.patch;
 
       let authorName = "Unknown";
       let authorUrl: string | undefined = undefined;
@@ -80,6 +81,8 @@ export const GET: APIRoute = async ({ url }) => {
       if (commitJson.author?.html_url) {
         authorUrl = commitJson.author.html_url;
       }
+
+      console.log(diffText);
 
       commitDetails.push({
         sha: commit.sha,
