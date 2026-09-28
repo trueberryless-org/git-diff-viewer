@@ -57,16 +57,18 @@ export function getDiffFormValues(
 
 export function parseSinceTimestamp(since: string): string | undefined {
   if (DATE_ONLY_RE.test(since)) {
-    const timestamp = `${since}T00:00:00Z`;
-    return isValidDate(timestamp) &&
-      new Date(timestamp).toISOString().startsWith(since)
-      ? timestamp
-      : undefined;
+    return isCalendarDate(since) ? `${since}T00:00:00Z` : undefined;
   }
 
-  if (!ISO_DATE_TIME_RE.test(since) || !isValidDate(since)) return;
+  if (!ISO_DATE_TIME_RE.test(since) || !isCalendarDate(since.slice(0, 10))) {
+    return;
+  }
 
-  return new Date(since).toISOString();
+  const timestamp = Date.parse(since);
+
+  return Number.isNaN(timestamp)
+    ? undefined
+    : new Date(timestamp).toISOString();
 }
 
 function parseSideBySide(value: string | null) {
@@ -75,8 +77,13 @@ function parseSideBySide(value: string | null) {
   return undefined;
 }
 
-function isValidDate(value: string) {
-  return value !== "" && !Number.isNaN(Date.parse(value));
+function isCalendarDate(date: string) {
+  const timestamp = Date.parse(`${date}T00:00:00Z`);
+
+  return (
+    !Number.isNaN(timestamp) &&
+    new Date(timestamp).toISOString().startsWith(date)
+  );
 }
 
 export type DiffParamsResult =
