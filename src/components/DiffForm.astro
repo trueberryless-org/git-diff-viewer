@@ -1,0 +1,149 @@
+---
+import type { DiffFormValues } from "../libs/params";
+
+interface Props {
+  error?: string | undefined;
+  values?: DiffFormValues | undefined;
+}
+
+const { error, values } = Astro.props;
+---
+
+<form method="get" action="/diff" class="gdv-form">
+  {error && (
+    <p class="gdv-form-error" role="alert">
+      {error}
+    </p>
+  )}
+  <div class="gdv-field">
+    <label for="gdv-url">
+      GitHub URL <span>(optional)</span>
+    </label>
+    <input
+      id="gdv-url"
+      type="url"
+      placeholder="https://github.com/withastro/docs/blob/main/README.md"
+      autocomplete="off"
+      data-gdv-url
+    />
+    <p class="gdv-hint">
+      Paste a link to a file or its commit history to fill in the fields below.
+    </p>
+  </div>
+  <div class="gdv-field">
+    <label for="gdv-repo">Repository</label>
+    <input
+      id="gdv-repo"
+      name="repo"
+      required
+      placeholder="withastro/docs"
+      value={values?.repo}
+      autocomplete="off"
+      spellcheck="false"
+    />
+  </div>
+  <div class="gdv-field">
+    <label for="gdv-file">File path</label>
+    <input
+      id="gdv-file"
+      name="file"
+      required
+      placeholder="src/content/docs/en/getting-started.mdx"
+      value={values?.file}
+      autocomplete="off"
+      spellcheck="false"
+    />
+  </div>
+  <div class="gdv-field">
+    <label for="gdv-since">Since</label>
+    <input
+      id="gdv-since"
+      name="since"
+      type="date"
+      required
+      value={values?.since}
+    />
+  </div>
+  <button type="submit">Show diff</button>
+</form>
+
+<script>
+  import { parseGitHubFileUrl } from "../libs/url";
+
+  const urlInput = document.querySelector<HTMLInputElement>("[data-gdv-url]");
+  const form = urlInput?.form;
+
+  urlInput?.addEventListener("input", () => {
+    const location = parseGitHubFileUrl(urlInput.value);
+    if (!location || !form) return;
+
+    for (const [name, value] of Object.entries(location)) {
+      const field = form.elements.namedItem(name);
+      if (field instanceof HTMLInputElement) field.value = value;
+    }
+  });
+</script>
+
+<style>
+  .gdv-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .gdv-form-error {
+    margin: 0;
+    border: 1px solid var(--gdv-del);
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.75rem;
+    color: var(--gdv-del);
+  }
+
+  .gdv-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  label {
+    font-weight: 500;
+  }
+
+  label span,
+  .gdv-hint {
+    color: var(--gdv-muted);
+    font-weight: 400;
+  }
+
+  .gdv-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+
+  input {
+    border: 1px solid var(--gdv-border);
+    border-radius: 0.375rem;
+    background: var(--gdv-bg);
+    padding: 0.5rem 0.625rem;
+    width: 100%;
+    color: var(--gdv-fg);
+  }
+
+  input::placeholder {
+    color: var(--gdv-muted);
+    opacity: 0.7;
+  }
+
+  button[type="submit"] {
+    align-self: flex-start;
+    border-color: var(--gdv-fg);
+    background: var(--gdv-fg);
+    padding: 0.5rem 1rem;
+    color: var(--gdv-bg);
+    font-weight: 500;
+  }
+
+  button[type="submit"]:hover {
+    opacity: 0.85;
+  }
+</style>

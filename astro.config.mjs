@@ -1,12 +1,28 @@
 // @ts-check
 import netlify from "@astrojs/netlify";
-import { defineConfig } from "astro/config";
+import { cacheNetlify } from "@astrojs/netlify/cache";
+import vue from "@astrojs/vue";
+import { defineConfig, envField } from "astro/config";
 
-// https://astro.build/config
 export default defineConfig({
-  site: "https://git-diff-viewer.trueberryless.org",
+  site: "https://git-diff-viewer.netlify.app",
   output: "server",
-  adapter: netlify({
-    cacheOnDemandPages: true,
-  }),
+  adapter: netlify(),
+  cache: {
+    provider: cacheNetlify(),
+  },
+  routeRules: {
+    "/diff": { maxAge: 3600, swr: 86400 },
+    "/api/diff": { maxAge: 3600, swr: 86400 },
+  },
+  env: {
+    schema: {
+      GITHUB_TOKEN: envField.string({
+        context: "server",
+        access: "secret",
+        optional: true,
+      }),
+    },
+  },
+  integrations: [vue()],
 });

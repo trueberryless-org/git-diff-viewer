@@ -1,205 +1,102 @@
 ---
+import DiffForm from "../components/DiffForm.astro";
 import Layout from "../layouts/Layout.astro";
-import { html as diff2html } from "diff2html";
+import { loadDiffPage } from "../libs/diff-page";
 
-const repo = Astro.url.searchParams.get("repo") || "";
-const file = Astro.url.searchParams.get("file") || "";
-const since = Astro.url.searchParams.get("since") || "";
+import DiffExplorer from "../components/DiffExplorer.vue";
 
-const sideBySide = Astro.url.searchParams.get("sideBySide") === "true";
-const outputFormat = sideBySide ? "side-by-side" : "line-by-line";
+const page = await loadDiffPage(Astro.url.searchParams);
 
-let commitsHtml = "";
-
-if (repo && file && since) {
-  try {
-    const origin = new URL(Astro.request.url).origin;
-    const res = await fetch(
-      `${origin}/api/diff?repo=${repo}&file=${file}&since=${since}`
-    );
-    const data = await res.json();
-
-    if (Array.isArray(data.commits) && data.commits.length > 0) {
-      commitsHtml = data.commits
-        .map((c: any) => {
-          const firstLine =
-            typeof c.message === "string"
-              ? c.message.split("\n")[0]
-              : c.message || "";
-
-          const truncatedMessage =
-            firstLine.length > 100
-              ? firstLine.slice(0, 100).trim() + "…"
-              : firstLine;
-
-          const authorHtml = c.authorUrl
-            ? `<a href="${c.authorUrl}" target="_blank" rel="noopener noreferrer" class="commit-author">${c.author}</a>`
-            : `<span class="commit-author">${c.author || "Unknown"}</span>`;
-
-          const diffBlock = diff2html(c.diff, {
-            outputFormat,
-            drawFileList: false,
-            matching: "lines",
-            colorScheme: "dark",
-            rawTemplates: {
-              "generic-file-path": `
-                <span class="d2h-file-name-wrapper">
-                  {{>fileIcon}}
-                  <span class="d2h-file-name">{{fileDiffName}}</span>
-                  {{>fileTag}}
-                </span>
-
-                <span class="d2h-commit-info">
-                  <a href="${c.url}" target="_blank" rel="noopener noreferrer" class="commit-message" title="${(c.message || "").replace(/"/g, "&quot;")}">
-                    ${truncatedMessage}
-                  </a>
-                  <span class="commit-meta">
-                    • by ${authorHtml}
-                    • <time datetime="${c.date}">${new Date(c.date).toLocaleDateString()}</time>
-                  </span>
-                </span>
-
-                <label class="d2h-file-collapse">
-                  <input class="d2h-file-collapse-input" type="checkbox" name="viewed" value="viewed">
-                  Viewed
-                </label>
-              `,
-            },
-          });
-
-          return `<div class="diff2html-commit">${diffBlock}</div>`;
-        })
-        .join("\n");
-    } else {
-      commitsHtml = `<p>${data.message || "No changes since given date."}</p>`;
-    }
-  } catch (e) {
-    commitsHtml = `<p>Error: ${e.message}</p>`;
-  }
+if (page.type === "form") {
+  Astro.response.status = page.status;
+  if (Astro.cache.enabled) Astro.cache.set(false);
 }
+
+const editUrl = `/${Astro.url.search}`;
 ---
 
-<Layout>
-  <h1>Diff for {repo}/{file} since {since}</h1>
-
-  <form method="get" id="diffOptionsForm" style="margin-bottom:1rem;">
-    <input type="hidden" name="repo" value={repo} />
-    <input type="hidden" name="file" value={file} />
-    <input type="hidden" name="since" value={since} />
-
-    <label>
-      <input
-        type="checkbox"
-        name="sideBySide"
-        value="true"
-        checked={sideBySide}
-        onchange="this.form.submit()"
-      />
-      Side by Side
-    </label>
-  </form>
-
-  {
-    commitsHtml ? (
-      <div class="commits-container" set:html={commitsHtml} />
+{page.type === "diff" ? (
+  <Layout title={page.params.file} wide>
+    <div class="gdv-summary">
+      <a class="gdv-repo" href={page.links.repo}>
+        {page.params.repo}
+      </a>
+      <h1>
+        <a href={page.links.file}>{page.params.file}</a>
+      </h1>
+      <p class="gdv-meta">
+        <span>
+          Changes since{" "}
+          <time datetime={page.params.sinceTimestamp}>{page.params.since}</time>
+        </span>
+        <span>
+          {page.history.commits.length}
+          {page.history.hasMoreCommits ? "+" : ""}
+          {page.history.commits.length === 1 ? " commit" : " commits"}
+        </span>
+        {page.links.compare && (
+          <a href={page.links.compare}>Compare on GitHub</a>
+        )}
+        <a href={editUrl}>Edit query</a>
+      </p>
+    </div>
+    {page.history.commits.length > 0 ? (
+      <DiffExplorer
+        client:only="vue"
+        commits={page.history.commits}
+        file={page.params.file}
+        hasMoreCommits={page.history.hasMoreCommits}
+        newContent={page.history.newContent}
+        oldContent={page.history.oldContent}
+        repo={page.params.repo}
+        sideBySide={page.params.sideBySide}
+      >
+        <p slot="fallback" class="gdv-loading">
+          Loading diff…
+        </p>
+      </DiffExplorer>
     ) : (
-      <p>No data.</p>
-    )
-  }
-</Layout>
+      <p class="gdv-empty">This file has not changed since that date.</p>
+    )}
+  </Layout>
+) : (
+  <Layout>
+    <h1>Show a diff</h1>
+    <DiffForm error={page.error} values={page.values} />
+  </Layout>
+)}
 
-<style is:global>
-  .d2h-file-header {
+<style>
+  h1 {
+    margin: 0.125rem 0 0.375rem;
+    font-size: 1.25rem;
+    font-family: var(--gdv-font-mono);
+    word-break: break-all;
+  }
+
+  h1 a {
+    color: inherit;
+  }
+
+  .gdv-summary {
+    margin-block-end: 0.5rem;
+  }
+
+  .gdv-repo {
+    color: var(--gdv-muted);
+  }
+
+  .gdv-meta {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    box-sizing: border-box;
-    padding: 0.6rem 0.9rem;
-    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin: 0;
+    color: var(--gdv-muted);
   }
 
-  .d2h-file-name-wrapper {
-    display: inline-flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 0.5rem;
-    width: unset;
-    min-width: 0;
-  }
-
-  .d2h-file-name {
-    max-width: 20ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .d2h-commit-info {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
-    min-width: 0;
-    white-space: nowrap;
-  }
-
-  .d2h-commit-info .commit-message {
-    display: inline-block;
-    max-width: 36ch;
-    overflow: hidden;
-    color: #58a6ff;
-    font-weight: 500;
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .d2h-commit-info .commit-meta {
-    color: #9aa4ab;
-  }
-
-  .d2h-commit-info .commit-author {
-    color: #58a6ff;
-    text-decoration: none;
-  }
-
-  @media (max-width: 720px) {
-    .d2h-commit-info .commit-meta {
-      display: none;
-    }
-    .d2h-commit-info .commit-message {
-      max-width: 20ch;
-    }
-  }
-
-  :is(.d2h-code-linenumber, .d2h-code-side-linenumber) {
-    cursor: default;
-    height: 20px;
-  }
-
-  .d2h-code-linenumber > div {
-    padding: 1px 0.5em;
-  }
-
-  .d2h-code-side-linenumber {
-    padding: 2px 0.5em;
-  }
-
-  :is(.d2h-code-linenumber, .d2h-code-side-linenumber).d2h-info {
-    background-color: hsl(
-      from var(--d2h-dark-info-bg-color) h calc(s - 50) calc(l - 44) / 1
-    ) !important;
-  }
-
-  :is(.d2h-code-linenumber, .d2h-code-side-linenumber).d2h-ins {
-    background-color: hsl(
-      from var(--d2h-dark-ins-bg-color) h calc(s - 25) calc(l - 22) / 1
-    ) !important;
-  }
-
-  :is(.d2h-code-linenumber, .d2h-code-side-linenumber).d2h-del {
-    background-color: hsl(
-      from var(--d2h-dark-del-bg-color) h calc(s - 50) calc(l - 44) / 1
-    ) !important;
+  .gdv-loading,
+  .gdv-empty {
+    margin-block: 1.5rem;
+    color: var(--gdv-muted);
   }
 </style>
