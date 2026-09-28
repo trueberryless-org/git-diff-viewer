@@ -44,11 +44,18 @@ export function parseGitHubFileUrl(
     return { repo };
 
   const since = url.searchParams.get("since")?.split("T")[0];
-  const file = pathSegments
-    .map((segment) => decodeURIComponent(segment))
-    .join("/");
+  const file = decodeFilePath(pathSegments);
+  if (!file) return { repo };
 
   return since ? { file, repo, since } : { file, repo };
+}
+
+function decodeFilePath(pathSegments: string[]) {
+  try {
+    return pathSegments.map((segment) => decodeURIComponent(segment)).join("/");
+  } catch {
+    return;
+  }
 }
 
 function encodeFilePath(file: string) {

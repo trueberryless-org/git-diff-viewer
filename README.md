@@ -5,7 +5,7 @@
 
 View the diff of a file in a public GitHub repository since a specific date: [git-diff-viewer.netlify.app](https://git-diff-viewer.netlify.app)
 
-The page shows the combined changes between the last version of the file before the date and its latest version, followed by every commit that changed the file since, each with its own diff.
+The page shows the combined changes between the last version of the file before the date and its latest version, followed by the latest commits (up to 100) that changed the file since, each with its own diff.
 
 ## URL parameters
 

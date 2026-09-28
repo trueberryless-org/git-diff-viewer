@@ -1,6 +1,8 @@
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 const LEADING_SLASHES_RE = /^\/+/;
-const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
+const REPO_RE = /^(?!\.+\/)[\w.-]+\/(?!\.+$)[\w.-]+$/;
 
 export function parseDiffParams(
   searchParams: URLSearchParams
@@ -54,10 +56,17 @@ export function getDiffFormValues(
 }
 
 export function parseSinceTimestamp(since: string): string | undefined {
-  if (DATE_ONLY_RE.test(since))
-    return isValidDate(`${since}T00:00:00Z`) ? `${since}T00:00:00Z` : undefined;
+  if (DATE_ONLY_RE.test(since)) {
+    const timestamp = `${since}T00:00:00Z`;
+    return isValidDate(timestamp) &&
+      new Date(timestamp).toISOString().startsWith(since)
+      ? timestamp
+      : undefined;
+  }
 
-  return isValidDate(since) ? new Date(since).toISOString() : undefined;
+  if (!ISO_DATE_TIME_RE.test(since) || !isValidDate(since)) return;
+
+  return new Date(since).toISOString();
 }
 
 function parseSideBySide(value: string | null) {
