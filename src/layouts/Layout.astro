@@ -12,12 +12,26 @@ const { title, wide = false } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title ? `${title} · Git Diff Viewer` : "Git Diff Viewer"}</title>
     <meta
       name="description"
       content="View the diff of a file in a public GitHub repository since a specific date."
     />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title ? `${title} · Git Diff Viewer` : "Git Diff Viewer"}</title>
+    <meta property="og:title" content={title} />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:description"
+      content="View the diff of a file in a public GitHub repository since a specific date."
+    />
+    <meta
+      property="og:image"
+      content="https://git-diff-viewer.netlify.app/og.png"
+    />
+    <meta
+      property="og:image:alt"
+      content="Diff a file on GitHub since a specific date."
+    />
   </head>
   <body>
     <header class="gdv-header">
