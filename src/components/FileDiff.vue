@@ -7,6 +7,7 @@ import { useClipboard } from "../composables/clipboard";
 import type { ColorScheme } from "../composables/color-scheme";
 import { useFileDiff } from "../composables/file-diff";
 import type { ViewMode } from "../composables/preferences";
+import { getSelectedDiffText } from "../libs/selection";
 
 const { colorScheme, file, newContent, oldContent, viewMode, wrap } =
   defineProps<{
@@ -18,11 +19,13 @@ const { colorScheme, file, newContent, oldContent, viewMode, wrap } =
     wrap: boolean;
   }>();
 
-const { diffFile, hasChanges, patch } = useFileDiff(() => ({
-  file,
-  newContent,
-  oldContent,
-}));
+const { addedText, diffFile, fileLines, hasChanges, patch } = useFileDiff(
+  () => ({
+    file,
+    newContent,
+    oldContent,
+  })
+);
 const { copy, getCopyLabel } = useClipboard();
 
 const isExpanded = ref(false);
@@ -44,10 +47,30 @@ function toggleExpandedLines() {
 
   isExpanded.value = !isExpanded.value;
 }
+
+function copyDiffSelection(event: ClipboardEvent) {
+  const selection = getSelection();
+  if (
+    !selection ||
+    !event.clipboardData ||
+    !(event.currentTarget instanceof HTMLElement)
+  )
+    return;
+
+  const text = getSelectedDiffText(
+    selection,
+    event.currentTarget,
+    fileLines.value
+  );
+  if (text === undefined) return;
+
+  event.preventDefault();
+  event.clipboardData.setData("text/plain", text);
+}
 </script>
 
 <template>
-  <div class="file-diff">
+  <div class="file-diff" @copy="copyDiffSelection">
     <div class="file-diff-header">
       <span class="stats">
         <span class="additions">+{{ diffFile.additionLength }}</span>
@@ -56,6 +79,14 @@ function toggleExpandedLines() {
       <div class="actions">
         <button v-if="canExpand" type="button" @click="toggleExpandedLines">
           {{ isExpanded ? "Collapse unchanged" : "Expand all" }}
+        </button>
+        <button
+          v-if="addedText"
+          type="button"
+          title="Copy the added and changed lines of the newer version, without diff markers"
+          @click="copy('additions', addedText)"
+        >
+          {{ getCopyLabel("additions", "Copy additions") }}
         </button>
         <button
           type="button"

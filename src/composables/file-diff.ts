@@ -1,7 +1,12 @@
 import { DiffFile } from "@git-diff-view/vue";
 import { type MaybeRefOrGetter, computed, toValue } from "vue";
 
-import { createFilePatch, getFileLang } from "../libs/diff";
+import {
+  createFilePatch,
+  getAddedText,
+  getFileLang,
+  getFileLines,
+} from "../libs/diff";
 
 export function useFileDiff(source: MaybeRefOrGetter<FileVersions>) {
   const patch = computed(() => {
@@ -18,7 +23,17 @@ export function useFileDiff(source: MaybeRefOrGetter<FileVersions>) {
     () => diffFile.value.additionLength + diffFile.value.deletionLength > 0
   );
 
-  return { diffFile, hasChanges, patch };
+  const addedText = computed(() => {
+    const { newContent, oldContent } = toValue(source);
+    return getAddedText(oldContent, newContent);
+  });
+
+  const fileLines = computed(() => {
+    const { newContent, oldContent } = toValue(source);
+    return getFileLines(oldContent, newContent);
+  });
+
+  return { addedText, diffFile, fileLines, hasChanges, patch };
 }
 
 function createDiffFile(
