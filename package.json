@@ -1,23 +1,42 @@
 {
   "name": "git-diff-viewer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "View the diff of a file in a public GitHub repository since a specific date.",
+  "author": "trueberryless <trueberryless@gmail.com> (https://felixs.dev)",
   "type": "module",
-  "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
+    "astro": "astro",
     "build": "astro build",
+    "check": "astro check",
+    "dev": "astro dev",
+    "format": "prettier . --write --cache --ignore-unknown",
     "preview": "astro preview",
-    "astro": "astro"
+    "start": "astro dev"
   },
   "dependencies": {
-    "@astrojs/netlify": "^6.5.11",
-    "astro": "^5.14.1",
-    "diff2html": "^3.4.52"
+    "@astrojs/netlify": "^8.2.6",
+    "@astrojs/vue": "^7.0.3",
+    "@git-diff-view/vue": "^0.1.7",
+    "astro": "^7.3.5",
+    "diff": "^9.0.0",
+    "vue": "^3.5.43"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "5.2.2",
-    "prettier": "3.5.3",
-    "prettier-plugin-astro": "0.14.1",
-    "prettier-plugin-css-order": "^2.1.2"
+    "@astrojs/check": "^0.9.10",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "prettier": "^3.9.9",
+    "prettier-plugin-astro": "^1.1.0",
+    "typescript": "^6.0.3"
   },
-  "packageManager": "pnpm@10.15.1"
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@12.6.0",
+  "homepage": "https://git-diff-viewer.netlify.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trueberryless-org/git-diff-viewer.git"
+  },
+  "bugs": "https://github.com/trueberryless-org/git-diff-viewer/issues"
 }
