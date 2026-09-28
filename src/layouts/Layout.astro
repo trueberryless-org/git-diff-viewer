@@ -1,39 +1,128 @@
 ---
-const { title = "Git Diff Viewer" } = Astro.props;
+interface Props {
+  title?: string | undefined;
+  wide?: boolean;
+}
+
+const { title, wide = false } = Astro.props;
 ---
 
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title}</title>
-    <style>
-      body {
-        background: #0d0d0d;
-        padding: 2rem;
-        color: #f5f5f5;
-        color-scheme: dark;
-        font-family: monospace, monospace;
-      }
-      input,
-      button {
-        margin: 0.5rem 0;
-        border: 1px solid #333;
-        border-radius: 0.25rem;
-        background: #1a1a1a;
-        padding: 0.5rem;
-        color: #f5f5f5;
-      }
-      button {
-        cursor: pointer;
-      }
-    </style>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css"
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="View the diff of a file in a public GitHub repository since a specific date."
     />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title ? `${title} · Git Diff Viewer` : "Git Diff Viewer"}</title>
   </head>
   <body>
-    <slot />
+    <header class="gdv-header">
+      <div class:list={["gdv-container", { "gdv-container-wide": wide }]}>
+        <a href="/" class="gdv-home">
+          Git Diff Viewer
+        </a>
+      </div>
+    </header>
+    <main class:list={["gdv-container", { "gdv-container-wide": wide }]}>
+      <slot />
+    </main>
   </body>
 </html>
+
+<style is:global>
+  :root {
+    --gdv-bg: light-dark(#ffffff, #0d1117);
+    --gdv-surface: light-dark(#f6f8fa, #151b23);
+    --gdv-surface-strong: light-dark(#e7ebef, #262c36);
+    --gdv-border: light-dark(#d1d9e0, #30363d);
+    --gdv-fg: light-dark(#1f2328, #e6edf3);
+    --gdv-muted: light-dark(#59636e, #9198a1);
+    --gdv-accent: light-dark(#0969da, #4493f8);
+    --gdv-add: light-dark(#1a7f37, #3fb950);
+    --gdv-del: light-dark(#d1242f, #f85149);
+    --gdv-font-sans:
+      system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --gdv-font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+      monospace;
+    color-scheme: light dark;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--gdv-bg);
+    color: var(--gdv-fg);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    font-family: var(--gdv-font-sans);
+  }
+
+  a {
+    color: var(--gdv-accent);
+    text-underline-offset: 0.15em;
+  }
+
+  a:not(:hover) {
+    text-decoration: none;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    border: 1px solid var(--gdv-border);
+    border-radius: 0.375rem;
+    background: var(--gdv-bg);
+    padding: 0.25rem 0.625rem;
+    color: var(--gdv-fg);
+  }
+
+  button:hover {
+    background: var(--gdv-surface-strong);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gdv-accent);
+    outline-offset: 2px;
+  }
+
+  .gdv-container {
+    margin-inline: auto;
+    padding-inline: 1rem;
+    max-width: 48rem;
+  }
+
+  .gdv-container-wide {
+    max-width: 96rem;
+  }
+</style>
+
+<style>
+  .gdv-header {
+    margin-block-end: 2rem;
+    border-block-end: 1px solid var(--gdv-border);
+    padding-block: 0.875rem;
+  }
+
+  main {
+    padding-block-end: 4rem;
+  }
+
+  .gdv-home {
+    color: var(--gdv-fg);
+    font-weight: 600;
+  }
+</style>
